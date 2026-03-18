@@ -1,0 +1,52 @@
+{
+  "Skill Init": {
+    "prefix": "skill:init",
+    "description": "Scaffold a new SKILL.md file",
+    "body": [
+      "---",
+      "name: ${1:skill-name}",
+      "description: >",
+      "  ${2:Describe what this skill does and when to trigger it. Be specific about}",
+      "  ${3:user phrases, contexts, and use cases. Make the description pushy.}",
+      "---",
+      "",
+      "# ${4:Skill Title}",
+      "",
+      "${5:Brief overview of what this skill does.}",
+      "",
+      "",
+      "## ${6:Core Section}",
+      "",
+      "${0}",
+      ""
+    ]
+  },
+  "Skill Section": {
+    "prefix": "skill:section",
+    "description": "Add a major section (##) with correct spacing",
+    "body": [
+      "",
+      "",
+      "## ${1:Section Title}",
+      "",
+      "${0}"
+    ]
+  },
+  "Skill Subsection": {
+    "prefix": "skill:sub",
+    "description": "Add a subsection (###) with correct spacing",
+    "body": [
+      "",
+      "### ${1:Subsection Title}",
+      "",
+      "${0}"
+    ]
+  },
+  "Skill Reference": {
+    "prefix": "skill:ref",
+    "description": "Add a reference file pointer",
+    "body": [
+      "For ${1:details}, read `references/${2:filename}.md`."
+    ]
+  }
+}

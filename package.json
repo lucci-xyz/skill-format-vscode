@@ -1,0 +1,112 @@
+{
+  "name": "skill-format",
+  "displayName": "Skill Format — Claude Skill Formatter",
+  "description": "Opinionated formatter for Claude SKILL.md files. Enforces frontmatter schema, section spacing, heading hierarchy, and markdown conventions.",
+  "version": "0.1.0",
+  "publisher": "lucci",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lucci-xyz/skill-format-vscode"
+  },
+  "icon": "icon.png",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Formatters"
+  ],
+  "keywords": [
+    "claude",
+    "skill",
+    "formatter",
+    "markdown",
+    "anthropic",
+    "SKILL.md",
+    "ai-tools",
+    "lucci"
+  ],
+  "activationEvents": [
+    "onLanguage:markdown",
+    "onLanguage:skill-md"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "skillFormat.format",
+        "title": "Skill Format: Format SKILL.md"
+      }
+    ],
+    "languages": [
+      {
+        "id": "skill-md",
+        "aliases": ["Claude Skill", "SKILL.md"],
+        "filenames": ["SKILL.md"],
+        "extensions": [],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "skill-md",
+        "scopeName": "text.html.markdown.skill",
+        "path": "./syntaxes/skill-md.tmGrammar.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "skill-md",
+        "path": "./snippets/skill-md.json"
+      },
+      {
+        "language": "markdown",
+        "path": "./snippets/skill-md.json"
+      }
+    ],
+    "configuration": {
+      "title": "Skill Format",
+      "properties": {
+        "skillFormat.formatOnSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "Format SKILL.md files on save."
+        },
+        "skillFormat.indentSize": {
+          "type": "number",
+          "default": 2,
+          "description": "Indentation size for YAML frontmatter and nested lists."
+        },
+        "skillFormat.maxBodyLines": {
+          "type": "number",
+          "default": 500,
+          "description": "Warn when SKILL.md body exceeds this many lines."
+        },
+        "skillFormat.enforceDescriptionBlockScalar": {
+          "type": "boolean",
+          "default": true,
+          "description": "Force multiline descriptions to use YAML block scalar (>) style."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "package": "vsce package",
+    "lint": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.7.1",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.7.0",
+    "vitest": "^4.1.0"
+  },
+  "dependencies": {
+    "gray-matter": "^4.0.3",
+    "yaml": "^2.7.0"
+  }
+}

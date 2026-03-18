@@ -1,0 +1,25 @@
+{
+  "scopeName": "text.html.markdown.skill",
+  "name": "Claude Skill",
+  "patterns": [
+    { "include": "#frontmatter" },
+    { "include": "text.html.markdown" }
+  ],
+  "repository": {
+    "frontmatter": {
+      "begin": "\\A(-{3})\\s*$",
+      "end": "^(-{3})\\s*$",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.frontmatter.begin.skill" }
+      },
+      "endCaptures": {
+        "1": { "name": "punctuation.definition.frontmatter.end.skill" }
+      },
+      "name": "meta.frontmatter.skill",
+      "contentName": "source.yaml",
+      "patterns": [
+        { "include": "source.yaml" }
+      ]
+    }
+  }
+}
