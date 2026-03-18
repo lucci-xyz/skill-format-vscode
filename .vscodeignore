@@ -1,0 +1,12 @@
+.git/**
+.DS_Store
+src/**
+tests/**
+node_modules/**
+*.vsix
+esbuild.mjs
+tsconfig.json
+vitest.config.ts
+CLAUDE.md
+CHANGELOG.md
+.gitignore
