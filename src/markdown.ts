@@ -1,11 +1,9 @@
 export interface MarkdownFormatOptions {
   indent: number;
-  maxLineWidth: number;
 }
 
 const DEFAULTS: MarkdownFormatOptions = {
   indent: 2,
-  maxLineWidth: 0, // 0 = no wrap (formatter doesn't rewrap prose)
 };
 
 /**
@@ -165,13 +163,6 @@ function normalizeSectionSpacing(lines: string[]): string[] {
 
     if (headingMatch) {
       const level = headingMatch[1].length;
-
-      // Count current trailing blanks in result
-      let trailingBlanks = 0;
-      for (let j = result.length - 1; j >= 0; j--) {
-        if (result[j].trim() === "") trailingBlanks++;
-        else break;
-      }
 
       // Remove existing trailing blanks
       while (result.length > 0 && result[result.length - 1].trim() === "") {
