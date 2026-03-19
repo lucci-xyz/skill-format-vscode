@@ -11,17 +11,36 @@ export function createDiagnosticsProvider(): vscode.Disposable[] {
 
   const disposables: vscode.Disposable[] = [collection];
 
-  let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+  const debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+  function clearTimer(uri: string) {
+    const timer = debounceTimers.get(uri);
+    if (timer) {
+      clearTimeout(timer);
+      debounceTimers.delete(uri);
+    }
+  }
 
   function scheduleUpdate(doc: vscode.TextDocument) {
-    if (debounceTimer) clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => updateDiagnostics(doc, collection), DEBOUNCE_MS);
+    const key = doc.uri.toString();
+    clearTimer(key);
+    debounceTimers.set(
+      key,
+      setTimeout(() => {
+        debounceTimers.delete(key);
+        updateDiagnostics(doc, collection);
+      }, DEBOUNCE_MS)
+    );
   }
 
   disposables.push(
     vscode.workspace.onDidOpenTextDocument((doc) => updateDiagnostics(doc, collection)),
     vscode.workspace.onDidChangeTextDocument((e) => scheduleUpdate(e.document)),
-    vscode.workspace.onDidCloseTextDocument((doc) => collection.delete(doc.uri))
+    vscode.workspace.onDidCloseTextDocument((doc) => {
+      clearTimer(doc.uri.toString());
+      collection.delete(doc.uri);
+    }),
+    { dispose: () => debounceTimers.forEach((t) => clearTimeout(t)) }
   );
 
   for (const doc of vscode.workspace.textDocuments) {
@@ -51,12 +70,10 @@ function updateDiagnostics(
   try {
     const parsed = matter(text);
     data = parsed.data;
-    // Find end of frontmatter by locating the closing --- fence
-    const firstFence = text.indexOf("---");
-    if (firstFence >= 0) {
-      const secondFence = text.indexOf("---", firstFence + 3);
+    // Find end of frontmatter only if file actually starts with ---
+    if (text.startsWith("---")) {
+      const secondFence = text.indexOf("---", 3);
       if (secondFence >= 0) {
-        // Count newlines up to the second fence
         let count = 0;
         for (let i = 0; i < secondFence; i++) {
           if (text.charCodeAt(i) === 10) count++;
@@ -129,7 +146,7 @@ function updateDiagnostics(
     if (line.trimStart().startsWith("```")) {
       // Check for missing language tag on opening fences (before toggling state)
       if (!inCodeBlock) {
-        const hasLang = /^(\s*)```\S/.test(line);
+        const hasLang = /^(\s*)```\s*\S/.test(line);
         if (!hasLang) {
           diagnostics.push(
             makeDiag(
