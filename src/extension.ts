@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import { formatSkillFile } from "./formatter";
 import { createDiagnosticsProvider } from "./diagnostics";
+import { isSkillFile } from "./utils";
 
 export function activate(context: vscode.ExtensionContext): void {
   // Register as a document formatter for skill-md language
@@ -45,7 +46,7 @@ export function activate(context: vscode.ExtensionContext): void {
     if (!config.get<boolean>("formatOnSave", true)) return;
     if (!isSkillFile(event.document)) return;
 
-    event.waitUntil(formatDocument(event.document));
+    event.waitUntil(Promise.resolve(formatDocumentSync(event.document)));
   });
 
   // Register command
@@ -62,7 +63,7 @@ export function activate(context: vscode.ExtensionContext): void {
         return;
       }
 
-      const edits = await formatDocument(editor.document);
+      const edits = formatDocumentSync(editor.document);
       if (edits.length > 0) {
         const edit = new vscode.WorkspaceEdit();
         for (const e of edits) {
@@ -102,12 +103,6 @@ class SkillFormattingProvider
   }
 }
 
-function isSkillFile(doc: vscode.TextDocument): boolean {
-  return (
-    doc.languageId === "skill-md" || doc.fileName.endsWith("SKILL.md")
-  );
-}
-
 function formatDocumentSync(doc: vscode.TextDocument): vscode.TextEdit[] {
   const config = vscode.workspace.getConfiguration("skillFormat");
   const indent = config.get<number>("indentSize", 2);
@@ -136,10 +131,4 @@ function formatDocumentSync(doc: vscode.TextDocument): vscode.TextEdit[] {
     console.error("Skill Format error:", err);
     return [];
   }
-}
-
-async function formatDocument(
-  doc: vscode.TextDocument
-): Promise<vscode.TextEdit[]> {
-  return formatDocumentSync(doc);
 }
