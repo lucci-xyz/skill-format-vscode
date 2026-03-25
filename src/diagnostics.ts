@@ -40,7 +40,14 @@ export function createDiagnosticsProvider(): vscode.Disposable[] {
       clearTimer(doc.uri.toString());
       collection.delete(doc.uri);
     }),
-    { dispose: () => debounceTimers.forEach((t) => clearTimeout(t)) }
+    {
+      dispose: () => {
+        for (const timer of debounceTimers.values()) {
+          clearTimeout(timer);
+        }
+        debounceTimers.clear();
+      }
+    }
   );
 
   for (const doc of vscode.workspace.textDocuments) {
@@ -70,16 +77,14 @@ function updateDiagnostics(
   try {
     const parsed = matter(text);
     data = parsed.data;
-    // Find end of frontmatter only if file actually starts with ---
-    if (text.startsWith("---")) {
-      const secondFence = text.indexOf("---", 3);
-      if (secondFence >= 0) {
-        let count = 0;
-        for (let i = 0; i < secondFence; i++) {
-          if (text.charCodeAt(i) === 10) count++;
-        }
-        frontmatterEnd = count + 1;
+    // Derive frontmatter line span from gray-matter parsing result.
+    if (parsed.matter) {
+      const contentStart = text.length - parsed.content.length;
+      let count = 0;
+      for (let i = 0; i < contentStart; i++) {
+        if (text.charCodeAt(i) === 10) count++;
       }
+      frontmatterEnd = count;
     }
   } catch {
     diagnostics.push(
