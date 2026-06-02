@@ -1,17 +1,15 @@
 import matter from "gray-matter";
 import { formatFrontmatter, FrontmatterFormatOptions } from "./frontmatter";
-import { formatMarkdownBody, MarkdownFormatOptions } from "./markdown";
+import { formatMarkdownBody } from "./markdown";
 
 export interface SkillFormatOptions {
   indent: number;
   enforceBlockScalar: boolean;
-  maxLineWidth: number;
 }
 
 const DEFAULTS: SkillFormatOptions = {
   indent: 2,
   enforceBlockScalar: true,
-  maxLineWidth: 0,
 };
 
 /**
@@ -43,11 +41,7 @@ export function formatSkillFile(
   const formattedFrontmatter = formatFrontmatter(data, fmOpts);
 
   // Format body
-  const mdOpts: Partial<MarkdownFormatOptions> = {
-    indent: options.indent,
-    maxLineWidth: options.maxLineWidth,
-  };
-  const formattedBody = formatMarkdownBody(content, mdOpts);
+  const formattedBody = formatMarkdownBody(content, { indent: options.indent });
 
   // Assemble
   const parts: string[] = [];

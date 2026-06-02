@@ -1,7 +1,9 @@
 import * as vscode from "vscode";
 import matter from "gray-matter";
+import { isSkillFile } from "./utils";
 
 const DIAGNOSTIC_SOURCE = "skill-format";
+const DEBOUNCE_MS = 300;
 
 export function createDiagnosticsProvider(): vscode.Disposable[] {
   const collection =
@@ -9,26 +11,43 @@ export function createDiagnosticsProvider(): vscode.Disposable[] {
 
   const disposables: vscode.Disposable[] = [collection];
 
-  // Run on open and change
+  const debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+  function clearTimer(uri: string) {
+    const timer = debounceTimers.get(uri);
+    if (timer) {
+      clearTimeout(timer);
+      debounceTimers.delete(uri);
+    }
+  }
+
+  function scheduleUpdate(doc: vscode.TextDocument) {
+    const key = doc.uri.toString();
+    clearTimer(key);
+    debounceTimers.set(
+      key,
+      setTimeout(() => {
+        debounceTimers.delete(key);
+        updateDiagnostics(doc, collection);
+      }, DEBOUNCE_MS)
+    );
+  }
+
   disposables.push(
     vscode.workspace.onDidOpenTextDocument((doc) => updateDiagnostics(doc, collection)),
-    vscode.workspace.onDidChangeTextDocument((e) => updateDiagnostics(e.document, collection)),
-    vscode.workspace.onDidCloseTextDocument((doc) => collection.delete(doc.uri))
+    vscode.workspace.onDidChangeTextDocument((e) => scheduleUpdate(e.document)),
+    vscode.workspace.onDidCloseTextDocument((doc) => {
+      clearTimer(doc.uri.toString());
+      collection.delete(doc.uri);
+    }),
+    { dispose: () => debounceTimers.forEach((t) => clearTimeout(t)) }
   );
 
-  // Run on all already-open documents
   for (const doc of vscode.workspace.textDocuments) {
     updateDiagnostics(doc, collection);
   }
 
   return disposables;
-}
-
-function isSkillFile(doc: vscode.TextDocument): boolean {
-  return (
-    doc.languageId === "skill-md" ||
-    doc.fileName.endsWith("SKILL.md")
-  );
 }
 
 function updateDiagnostics(
@@ -42,6 +61,7 @@ function updateDiagnostics(
 
   const diagnostics: vscode.Diagnostic[] = [];
   const text = doc.getText();
+  const lines = text.split("\n");
 
   // Parse frontmatter
   let data: Record<string, unknown> = {};
@@ -50,10 +70,16 @@ function updateDiagnostics(
   try {
     const parsed = matter(text);
     data = parsed.data;
-    // Find end of frontmatter in the document
-    const secondFence = text.indexOf("---", text.indexOf("---") + 3);
-    if (secondFence >= 0) {
-      frontmatterEnd = text.substring(0, secondFence).split("\n").length;
+    // Find end of frontmatter only if file actually starts with ---
+    if (text.startsWith("---")) {
+      const secondFence = text.indexOf("---", 3);
+      if (secondFence >= 0) {
+        let count = 0;
+        for (let i = 0; i < secondFence; i++) {
+          if (text.charCodeAt(i) === 10) count++;
+        }
+        frontmatterEnd = count + 1;
+      }
     }
   } catch {
     diagnostics.push(
@@ -110,8 +136,7 @@ function updateDiagnostics(
     );
   }
 
-  // ── Heading hierarchy ──
-  const lines = text.split("\n");
+  // ── Heading hierarchy + code fence checks ──
   let h1Count = 0;
   let inCodeBlock = false;
 
@@ -119,6 +144,19 @@ function updateDiagnostics(
     const line = lines[i];
 
     if (line.trimStart().startsWith("```")) {
+      // Check for missing language tag on opening fences (before toggling state)
+      if (!inCodeBlock) {
+        const hasLang = /^(\s*)```\s*\S/.test(line);
+        if (!hasLang) {
+          diagnostics.push(
+            makeDiag(
+              i,
+              "Code fence missing language tag (e.g., ```python, ```bash).",
+              vscode.DiagnosticSeverity.Information
+            )
+          );
+        }
+      }
       inCodeBlock = !inCodeBlock;
       continue;
     }
@@ -139,23 +177,6 @@ function updateDiagnostics(
         }
       }
     }
-
-    // Code fence without language tag
-    const fenceOpen = line.match(/^(\s*)```(\s*)$/);
-    if (fenceOpen && !inCodeBlock) {
-      // This is an opening fence with no language — check it's not a closing fence
-      // by looking if we just entered a code block
-      const prevCodeState = isInCodeBlock(lines, i);
-      if (!prevCodeState) {
-        diagnostics.push(
-          makeDiag(
-            i,
-            "Code fence missing language tag (e.g., ```python, ```bash).",
-            vscode.DiagnosticSeverity.Information
-          )
-        );
-      }
-    }
   }
 
   collection.set(doc.uri, diagnostics);
@@ -173,17 +194,4 @@ function makeDiag(
   );
   diag.source = DIAGNOSTIC_SOURCE;
   return diag;
-}
-
-/**
- * Checks if line `targetLine` is inside a code block by counting fences before it.
- */
-function isInCodeBlock(lines: string[], targetLine: number): boolean {
-  let inside = false;
-  for (let i = 0; i < targetLine; i++) {
-    if (lines[i].trimStart().startsWith("```")) {
-      inside = !inside;
-    }
-  }
-  return inside;
 }
